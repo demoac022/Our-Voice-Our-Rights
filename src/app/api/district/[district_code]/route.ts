@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { DistrictPerformance } from '@/models/DistrictPerformance';
 import { mgnregaService } from '@/services/mgnrega';
+import { DISTRICTS } from '@/data/districts';
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -18,76 +19,44 @@ const connectDB = async () => {
 
 export async function GET(
   request: Request,
-  context: { params: { district_code: string } }
+  context: { params: Promise<{ district_code: string }> }
 ) {
   try {
-    await connectDB();
+    const params = await context.params;
+    const districtId = params.district_code;
+    const districtInfo = DISTRICTS.find(d => d.id === districtId);
 
-    // District-specific mock data
-    const getDistrictData = (districtId: string) => {
-      // Base multiplier from district ID to create varying data
-      const multiplier = parseInt(districtId) || 1;
-      
-      return {
-        district_code: districtId,
-        district_name: districtId === "1" ? "Bangalore Rural" :
-                      districtId === "2" ? "Mysore" :
-                      districtId === "3" ? "Varanasi" :
-                      districtId === "4" ? "Patna" :
-                      districtId === "5" ? "Jaipur" :
-                      districtId === "6" ? "Pune" :
-                      districtId === "7" ? "Ahmedabad" :
-                      districtId === "8" ? "Chennai" :
-                      districtId === "9" ? "Hyderabad" :
-                      districtId === "10" ? "Bhopal" : "Unknown District",
-        state_name: districtId === "1" || districtId === "2" ? "Karnataka" :
-                   districtId === "3" ? "Uttar Pradesh" :
-                   districtId === "4" ? "Bihar" :
-                   districtId === "5" ? "Rajasthan" :
-                   districtId === "6" ? "Maharashtra" :
-                   districtId === "7" ? "Gujarat" :
-                   districtId === "8" ? "Tamil Nadu" :
-                   districtId === "9" ? "Telangana" :
-                   districtId === "10" ? "Madhya Pradesh" : "Unknown State",
-        performance_data: {
-          total_workers: 100000 + (multiplier * 25000),
-          active_workers: 50000 + (multiplier * 12500),
-          wages_paid: 2000000 + (multiplier * 500000),
-          work_days_generated: 75000 + (multiplier * 15000)
-        }
-      };
-    };
+    if (!districtInfo) {
+      return NextResponse.json(
+        { error: 'District not found' },
+        { status: 404 }
+      );
+    }
 
-    const mockData = getDistrictData(context.params.district_code);
-
-    return NextResponse.json(mockData);
-
-    // Comment out the database operations for now
-    /*
-    let districtData = await DistrictPerformance.findOne({
-      district_code: params.district_code,
-      timestamp: { $gt: new Date(Date.now() - 24 * 60 * 60 * 1000) },
+    // Fetch real performance data from MGNREGA API
+    const performanceData = await mgnregaService.getDistrictPerformance(districtId);
+    
+    return NextResponse.json({
+      district_code: districtId,
+      district_name: districtInfo.name,
+      state_name: districtInfo.state,
+      performance_data: {
+        total_workers: parseInt(performanceData.Total_No_of_Workers),
+        active_workers: parseInt(performanceData.Total_No_of_Active_Workers),
+        wages_paid: parseFloat(performanceData.Wages),
+        work_days_generated: parseInt(performanceData.Total_Households_Worked),
+        avg_days_employment: parseFloat(performanceData.Average_days_of_employment_provided_per_Household),
+        avg_wage_rate: parseFloat(performanceData.Average_Wage_rate_per_day_per_person),
+        completed_100_days: parseInt(performanceData.Total_No_of_HHs_completed_100_Days_of_Wage_Employment),
+        total_expenditure: parseFloat(performanceData.Total_Exp),
+        women_participation: parseInt(performanceData.Women_Persondays),
+        sc_participation: parseInt(performanceData.SC_persondays),
+        st_participation: parseInt(performanceData.ST_persondays),
+        payment_within_15_days: parseFloat(performanceData.percentage_payments_gererated_within_15_days)
+      }
     });
 
-    if (!districtData) {
-      const apiData = await mgnregaService.getDistrictPerformance(params.district_code);
-      
-      districtData = await DistrictPerformance.create({
-        district_code: params.district_code,
-        district_name: apiData.district_name,
-        state_name: apiData.state_name,
-        performance_data: {
-          total_workers: apiData.total_workers,
-          active_workers: apiData.active_workers,
-          wages_paid: apiData.wages_paid,
-          work_days_generated: apiData.work_days_generated,
-        },
-      });
-    }
-    */
-    // return NextResponse.json(districtData);
-
-    return NextResponse.json(mockData);
+    return NextResponse.json({ error: 'Failed to fetch district data' }, { status: 500 });
   } catch (error) {
     console.error('Error fetching district data:', error);
     return NextResponse.json(

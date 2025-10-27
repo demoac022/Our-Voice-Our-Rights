@@ -12,13 +12,13 @@ const content = {
     title: 'Know Your MGNREGA Performance',
     subtitle: 'Easy access to your district\'s employment guarantee program data',
     description: 'Select your district to see how the Mahatma Gandhi National Rural Employment Guarantee Act is performing in your area.',
-    cta: 'Find My District'
+    cta: 'Detect My Location'
   },
   hi: {
     title: 'अपने मनरेगा प्रदर्शन को जानें',
     subtitle: 'अपने जिले के रोजगार गारंटी कार्यक्रम का डेटा आसानी से देखें',
     description: 'अपने क्षेत्र में महात्मा गांधी राष्ट्रीय ग्रामीण रोजगार गारंटी अधिनियम का प्रदर्शन देखने के लिए अपना जिला चुनें।',
-    cta: 'मेरा जिला खोजें'
+    cta: 'मेरा स्थान पता करें'
   }
 };
 
